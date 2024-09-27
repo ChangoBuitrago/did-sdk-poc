@@ -5,32 +5,33 @@ class DIDCreateOperation {
   private signer: LocalSigner;
   private publisher: LocalPublisher;
   private payload: DIDCreatePayload;
-  private transaction: TopicCreateTransaction;
 
   constructor({ signer, publisher, payload }: { signer: LocalSigner; publisher: LocalPublisher; payload: DIDCreatePayload }) {
     this.signer = signer;
     this.publisher = publisher;
     this.payload = payload;
-    this.transaction = new TopicCreateTransaction();
   }
 
-  async prepareTransaction(): Promise<void> {
-    // Sign the payload before setting it in the transaction
-    const payloadBytes = new TextEncoder().encode(JSON.stringify(this.payload));
-    
-    const signedPayload = await this.signer.sign(payloadBytes);
-    console.log(signedPayload)
-    
-    // Set transaction properties and add the signed payload
-    this.transaction
+  async signPayload(): Promise<Uint8Array> {
+    return this.signer.sign(this.payload.toBytes());
+  }
+
+  async prepareTransaction(signedPayload: Uint8Array): Promise<TopicCreateTransaction> {
+    const transaction = new TopicCreateTransaction()
       .setAdminKey(PublicKey.fromString(this.signer.publicKey))
       .setSubmitKey(PublicKey.fromString(this.signer.publicKey))
-      // .freezeWith(this.publisher.client)
+      .freezeWith(this.publisher.client);
+
+    // Add the signed payload to the transaction (adjust as needed)
+    // ..
+
+    return transaction;
   }
 
   async execute(): Promise<any> {
-    await this.prepareTransaction(); // Ensure transaction is prepared before executing
-    return this.publisher.publish(this.transaction);
+    const signedPayload = await this.signPayload();
+    const transaction = await this.prepareTransaction(signedPayload);
+    return this.publisher.publish(transaction);
   }
 }
 
