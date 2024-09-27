@@ -1,4 +1,4 @@
-import { PublicKey, TopicCreateTransaction } from '@hashgraph/sdk';
+import { TopicMessageSubmitTransaction } from '@hashgraph/sdk';
 import { DIDCreatePayload, LocalPublisher, LocalSigner } from '.';
 
 class DIDCreateOperation {
@@ -16,22 +16,18 @@ class DIDCreateOperation {
     return this.signer.sign(this.payload.toBytes());
   }
 
-  async prepareTransaction(signedPayload: Uint8Array): Promise<TopicCreateTransaction> {
-    const transaction = new TopicCreateTransaction()
-      .setAdminKey(PublicKey.fromString(this.signer.publicKey))
-      .setSubmitKey(PublicKey.fromString(this.signer.publicKey))
+  async prepareTransaction(signedPayload: Uint8Array): Promise<TopicMessageSubmitTransaction> {
+    return new TopicMessageSubmitTransaction()
+      .setMessage(signedPayload)
       .freezeWith(this.publisher.client);
-
-    // Add the signed payload to the transaction (adjust as needed)
-    // ..
-
-    return transaction;
   }
 
   async execute(): Promise<any> {
     const signedPayload = await this.signPayload();
     const transaction = await this.prepareTransaction(signedPayload);
-    return this.publisher.publish(transaction);
+    const response = await this.publisher.publish(transaction);
+
+    return response.getReceipt(this.publisher.client);
   }
 }
 
