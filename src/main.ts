@@ -5,20 +5,20 @@ import { DIDCreateOperation, DIDCreatePayload, LocalPublisher, LocalSigner } fro
 async function main() {
   envConfig({ path: '.env.test' }); 
 
-  const client = Client.forTestnet();
+  // Retrieve account ID and private key  
+  const accountId = process.env.OPERATOR_ID as string
+  const privateKey = process.env.OPERATOR_PRIVATE_KEY as string
 
-  // Set the operator ID and private key for the client
-  const operatorId = process.env.OPERATOR_ID as string
-  const operatorPrivateKey = process.env.OPERATOR_PRIVATE_KEY as string
-  client.setOperator(operatorId, operatorPrivateKey);
+  // Initialize Hedera testnet client 
+  const client = Client.forTestnet().setOperator(accountId, privateKey);
 
-  // Replace this with the actual DID creation data
-  const didCreationData = '';
+  // Replace this with the actual DID creation payload
+  const didCreationPayload = '';
 
-  // Create a DID create operation with the specified data, signer, and publisher
+  // Create a DID create operation with the specified payload, signer, and publisher
   const didCreateOperation = new DIDCreateOperation({
-    payload: new DIDCreatePayload(didCreationData),
-    signer: new LocalSigner(operatorPrivateKey),
+    payload: new DIDCreatePayload(didCreationPayload),
+    signer: new LocalSigner(privateKey),
     publisher: new LocalPublisher(client),
   });
 
