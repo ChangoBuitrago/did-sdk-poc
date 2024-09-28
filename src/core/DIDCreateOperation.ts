@@ -5,11 +5,13 @@ class DIDCreateOperation {
   private signer: LocalSigner;
   private publisher: LocalPublisher;
   private payload: DIDCreatePayload;
+  private topicId: string;
 
-  constructor({ signer, publisher, payload }: { signer: LocalSigner; publisher: LocalPublisher; payload: DIDCreatePayload }) {
+  constructor({ signer, publisher, payload, topicId }: { signer: LocalSigner; publisher: LocalPublisher; payload: DIDCreatePayload; topicId: string }) {
     this.signer = signer;
     this.publisher = publisher;
     this.payload = payload;
+    this.topicId = topicId;
   }
 
   async signPayload(): Promise<Uint8Array> {
@@ -18,6 +20,7 @@ class DIDCreateOperation {
 
   async prepareTransaction(signedPayload: Uint8Array): Promise<TopicMessageSubmitTransaction> {
     return new TopicMessageSubmitTransaction()
+      .setTopicId(this.topicId)
       .setMessage(signedPayload)
       .freezeWith(this.publisher.client);
   }
@@ -25,9 +28,7 @@ class DIDCreateOperation {
   async execute(): Promise<any> {
     const signedPayload = await this.signPayload();
     const transaction = await this.prepareTransaction(signedPayload);
-    const response = await this.publisher.publish(transaction);
-
-    return response.getReceipt(this.publisher.client);
+    return this.publisher.publish(transaction);
   }
 }
 

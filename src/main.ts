@@ -15,16 +15,17 @@ async function main() {
   // Replace this with the actual DID creation payload
   const didCreationPayload = '';
 
-  // Create a DID create operation with the specified payload, signer, and publisher
+  // Create a DID create operation with the specified topicId, payload, signer, and publisher
   const didCreateOperation = new DIDCreateOperation({
+    topicId: '0.0.4920691',
     payload: new DIDCreatePayload(didCreationPayload),
     signer: new LocalSigner(privateKey),
     publisher: new LocalPublisher(client),
   });
 
-  // Execute the transaction and log the receipt
-  const receipt = await didCreateOperation.execute();
-  console.log('Receipt:', receipt);
+  // Execute the transaction and log the status
+  const { status } = await didCreateOperation.execute();
+  console.log('Status:', status);
 }
 
 main();
