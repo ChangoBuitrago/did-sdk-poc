@@ -14,7 +14,7 @@ class DIDCreateOperation {
     this.topicId = topicId;
   }
 
-  private async signPayload(): Promise<Uint8Array> {
+  private async preparePayload(): Promise<Uint8Array> {
     return this.signer.sign(this.payload.toBytes());
   }
 
@@ -26,7 +26,7 @@ class DIDCreateOperation {
   }
 
   async execute(): Promise<any> {
-    const signedPayload = await this.signPayload();
+    const signedPayload = await this.preparePayload();
     const transaction = await this.prepareTransaction(signedPayload);
     return this.publisher.publish(transaction);
   }
