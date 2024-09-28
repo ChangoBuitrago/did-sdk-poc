@@ -14,11 +14,11 @@ class DIDCreateOperation {
     this.topicId = topicId;
   }
 
-  async signPayload(): Promise<Uint8Array> {
+  private async signPayload(): Promise<Uint8Array> {
     return this.signer.sign(this.payload.toBytes());
   }
 
-  async prepareTransaction(signedPayload: Uint8Array): Promise<TopicMessageSubmitTransaction> {
+  private async prepareTransaction(signedPayload: Uint8Array): Promise<TopicMessageSubmitTransaction> {
     return new TopicMessageSubmitTransaction()
       .setTopicId(this.topicId)
       .setMessage(signedPayload)
