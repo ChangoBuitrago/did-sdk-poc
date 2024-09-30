@@ -6,6 +6,8 @@ import {
   LocalPublisher,
   LocalSigner,
 } from "./core";
+import { DIDOwnerMessage } from "./core/DIDOwnerMessage";
+import { DIDOwnerMessageWithLifeCycle } from "./core/DIDOwnerMessage-lifecycle";
 
 async function main() {
   envConfig({ path: ".env.test" });
@@ -17,29 +19,19 @@ async function main() {
   // Initialize Hedera testnet client
   const client = Client.forTestnet().setOperator(accountId, privateKey);
 
-  // Replace this with the actual DID creation payload
-  const didCreationPayload = {
-    publicKey: PrivateKey.fromStringDer(privateKey).publicKey,
-    topicId: "0.0.4928231",
-    controller:
-      "did:hedera:testnet:z8brLDSMuByWYqd1A7yUhaiL8T2LKcxeUdihD4GmHdzar_0.0.4388790",
-  };
+  const signer = new LocalSigner(privateKey);
+  const publisher = new LocalPublisher(client);
 
   // Create a DID create operation with the specified topicId, payload, signer, and publisher
-  const didCreateOperation = new DIDCreateOperation({
-    payload: new DIDCreatePayload(didCreationPayload),
-    signer: new LocalSigner(privateKey),
-    publisher: new LocalPublisher(client),
+  const didOwnerMessage = new DIDOwnerMessageWithLifeCycle({
+    publicKey: PrivateKey.fromStringDer(privateKey).publicKey,
+    controller:
+      "did:hedera:testnet:z8brLDSMuByWYqd1A7yUhaiL8T2LKcxeUdihD4GmHdzar_0.0.4388790",
   });
 
-  try {
-    // Execute the transaction and log the status
-    const { status } = await didCreateOperation.execute();
-    console.log('Status:', status);
-  } finally {
-    // Ensure the client is closed to prevent hanging
-    await client.close(); 
-  }
+  await didOwnerMessage.execute(signer, publisher);
+
+  client.close();
 }
 
 main();
