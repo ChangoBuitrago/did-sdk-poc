@@ -1,33 +1,61 @@
-import { TopicMessageSubmitTransaction } from '@hashgraph/sdk';
-import { DIDCreatePayload, LocalPublisher, LocalSigner } from '.';
+import bs58 from "bs58";
+import {
+  TopicMessageSubmitTransaction,
+  TransactionReceipt,
+} from "@hashgraph/sdk";
+import { DIDCreatePayload, LocalPublisher, LocalSigner } from ".";
+import { DIDOwnerMessage } from "./DIDOwnerMessage";
+
+interface DIDCreateOperationConstructor {
+  signer: LocalSigner;
+  publisher: LocalPublisher;
+  payload: DIDCreatePayload;
+}
+
+// TODO: Add to payload?
+const hederaNetwork = "testnet";
 
 class DIDCreateOperation {
-  private signer: LocalSigner;
-  private publisher: LocalPublisher;
-  private payload: DIDCreatePayload;
-  private topicId: string;
+  private readonly signer: LocalSigner;
+  private readonly publisher: LocalPublisher;
+  private readonly payload: DIDCreatePayload;
+  private readonly message: DIDOwnerMessage;
 
-  constructor({ signer, publisher, payload, topicId }: { signer: LocalSigner; publisher: LocalPublisher; payload: DIDCreatePayload; topicId: string }) {
+  constructor({ signer, publisher, payload }: DIDCreateOperationConstructor) {
     this.signer = signer;
     this.publisher = publisher;
     this.payload = payload;
-    this.topicId = topicId;
+
+    this.message = new DIDOwnerMessage(
+      this.did,
+      this.payload.controller,
+      this.payload.publicKey,
+      this.payload.topicId
+    );
   }
 
-  private async preparePayload(): Promise<Uint8Array> {
-    return this.signer.sign(this.payload.toBytes());
+  private get did(): string {
+    // Probably not the best way to encode the public key and not working
+    const publicKeyBase58 = bs58.encode(this.payload.publicKey.toBytes());
+    return `did:hedera:${hederaNetwork}:${publicKeyBase58}_${this.payload.topicId}`;
   }
 
-  private async prepareTransaction(signedPayload: Uint8Array): Promise<TopicMessageSubmitTransaction> {
+  private async signEvent(): Promise<Uint8Array> {
+    const payloadSignature = await this.signer.sign(this.message.eventBytes);
+    this.message.setSignature(payloadSignature);
+    return payloadSignature;
+  }
+
+  private async prepareTransaction(): Promise<TopicMessageSubmitTransaction> {
     return new TopicMessageSubmitTransaction()
-      .setTopicId(this.topicId)
-      .setMessage(signedPayload)
+      .setTopicId(this.payload.topicId)
+      .setMessage(this.message.messagePayload)
       .freezeWith(this.publisher.client);
   }
 
-  async execute(): Promise<any> {
-    const signedPayload = await this.preparePayload();
-    const transaction = await this.prepareTransaction(signedPayload);
+  async execute(): Promise<TransactionReceipt> {
+    await this.signEvent();
+    const transaction = await this.prepareTransaction();
     return this.publisher.publish(transaction);
   }
 }

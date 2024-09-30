@@ -1,4 +1,4 @@
-import { Client, Transaction } from '@hashgraph/sdk';
+import { Client, Transaction, TransactionReceipt } from "@hashgraph/sdk";
 
 class LocalPublisher {
   private _client: Client;
@@ -11,13 +11,13 @@ class LocalPublisher {
     return this._client;
   }
 
-  async publish(transaction: Transaction): Promise<any> {
+  async publish(transaction: Transaction): Promise<TransactionReceipt> {
     try {
       const response = await transaction.execute(this._client);
       const receipt = await response.getReceipt(this._client);
       return receipt;
     } catch (error) {
-      console.error('Error publishing transaction:', error);
+      console.error("Error publishing transaction:", error);
       throw error;
     }
   }

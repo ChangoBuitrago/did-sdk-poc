@@ -1,4 +1,4 @@
-import { PrivateKey } from '@hashgraph/sdk';
+import { PrivateKey } from "@hashgraph/sdk";
 
 class LocalSigner {
   private _privateKey: PrivateKey;
@@ -12,7 +12,7 @@ class LocalSigner {
   }
 
   get publicKey(): string {
-    return this._privateKey.publicKey.toStringDer()
+    return this._privateKey.publicKey.toStringDer();
   }
 }
 
