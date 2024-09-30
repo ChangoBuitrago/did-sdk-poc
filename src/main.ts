@@ -32,9 +32,14 @@ async function main() {
     publisher: new LocalPublisher(client),
   });
 
-  // Execute the transaction and log the status
-  const { status } = await didCreateOperation.execute();
-  console.log("Status:", status);
+  try {
+    // Execute the transaction and log the status
+    const { status } = await didCreateOperation.execute();
+    console.log('Status:', status);
+  } finally {
+    // Ensure the client is closed to prevent hanging
+    await client.close(); 
+  }
 }
 
 main();
