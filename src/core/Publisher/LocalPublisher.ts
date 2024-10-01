@@ -1,6 +1,7 @@
 import { Client, Transaction, TransactionReceipt } from "@hashgraph/sdk";
+import { Publisher } from "./Publisher.type";
 
-class LocalPublisher {
+class LocalPublisher implements Publisher {
   private _client: Client;
 
   constructor(client: Client) {

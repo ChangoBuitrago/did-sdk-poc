@@ -1,15 +1,14 @@
 import { Client, PrivateKey } from "@hashgraph/sdk";
 import { config as envConfig } from "dotenv";
 import {
-  DIDCreateOperation,
-  DIDCreatePayload,
   LocalPublisher,
   LocalSigner,
+  DIDOwnerMessage,
+  KMSSigner,
+  DIDOwnerMessageHederaDefaultLifeCycle,
 } from "./core";
-import { DIDOwnerMessage } from "./core/DIDOwnerMessage";
-import { DIDOwnerMessageWithLifeCycle } from "./core/DIDOwnerMessage-lifecycle";
 
-async function main() {
+async function mainInternalMode() {
   envConfig({ path: ".env.test" });
 
   // Retrieve account ID and private key
@@ -23,7 +22,7 @@ async function main() {
   const publisher = new LocalPublisher(client);
 
   // Create a DID create operation with the specified topicId, payload, signer, and publisher
-  const didOwnerMessage = new DIDOwnerMessageWithLifeCycle({
+  const didOwnerMessage = new DIDOwnerMessage({
     publicKey: PrivateKey.fromStringDer(privateKey).publicKey,
     controller:
       "did:hedera:testnet:z8brLDSMuByWYqd1A7yUhaiL8T2LKcxeUdihD4GmHdzar_0.0.4388790",
@@ -34,4 +33,75 @@ async function main() {
   client.close();
 }
 
-main();
+async function mainExternalMode() {
+  envConfig({ path: ".env.test" });
+
+  // Retrieve account ID and private key
+  const accountId = process.env.OPERATOR_ID as string;
+  const privateKey = process.env.OPERATOR_PRIVATE_KEY as string;
+
+  // Initialize Hedera testnet client
+  const client = Client.forTestnet().setOperator(accountId, privateKey);
+
+  const signer = new KMSSigner({
+    url: "http://localhost:8080",
+    credentials: {
+      accessKeyId: "access",
+      secretAccessKey: "secret",
+    },
+  });
+  const publisher = new LocalPublisher(client);
+
+  // Create a DID create operation with the specified topicId, payload, signer, and publisher
+  const didOwnerMessage = new DIDOwnerMessage({
+    publicKey: PrivateKey.fromStringDer(privateKey).publicKey,
+    controller:
+      "did:hedera:testnet:z8brLDSMuByWYqd1A7yUhaiL8T2LKcxeUdihD4GmHdzar_0.0.4388790",
+  });
+
+  await didOwnerMessage.execute(signer, publisher);
+
+  client.close();
+}
+
+async function mainClientMode() {
+  envConfig({ path: ".env.test" });
+
+  // Retrieve account ID and private key
+  const accountId = process.env.OPERATOR_ID as string;
+  const privateKey = process.env.OPERATOR_PRIVATE_KEY as string;
+
+  // Initialize Hedera testnet client
+  const client = Client.forTestnet().setOperator(accountId, privateKey);
+
+  const signer = new KMSSigner({
+    url: "http://localhost:8080",
+    credentials: {
+      accessKeyId: "access",
+      secretAccessKey: "secret",
+    },
+  });
+  const publisher = new LocalPublisher(client);
+
+  // Create a DID create operation with the specified topicId, payload, signer, and publisher
+  const didOwnerMessage = new DIDOwnerMessage({
+    publicKey: PrivateKey.fromStringDer(privateKey).publicKey,
+    controller:
+      "did:hedera:testnet:z8brLDSMuByWYqd1A7yUhaiL8T2LKcxeUdihD4GmHdzar_0.0.4388790",
+  });
+
+  await didOwnerMessage.execute(signer, publisher, {
+    ...DIDOwnerMessageHederaDefaultLifeCycle,
+    preSigning() {
+      // QUESTION: How to use this in CSM, client should provide this signature during lifecycle.
+      // How to pause the lifecycle and wait for the client to provide the signature? Without blocking the main thread.
+      return {
+        signature: new Uint8Array(10).fill(1),
+      };
+    },
+  });
+
+  client.close();
+}
+
+mainInternalMode();
