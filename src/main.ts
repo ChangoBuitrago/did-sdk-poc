@@ -26,13 +26,7 @@ async function mainInternalMode() {
     publicKey: PrivateKey.fromStringDer(privateKey).publicKey,
     controller:
       "did:hedera:testnet:z8brLDSMuByWYqd1A7yUhaiL8T2LKcxeUdihD4GmHdzar_0.0.4388790",
-  });
-
-  await DIDOwnerMessageHederaDefaultLifeCycle.start(
-    didOwnerMessage,
-    signer,
-    publisher
-  );
+  }).execute(signer, publisher);
 
   client.close();
 }

@@ -1,4 +1,9 @@
+import { Publisher } from "../Publisher";
 import { Signer } from "../Signer";
+import {
+  DIDMessageLifeCycleManager,
+  Hooks,
+} from "./DIDMessageLifeCycleManager";
 
 export abstract class DIDMessage<
   PreCreationData extends {} = {},
@@ -50,6 +55,15 @@ export abstract class DIDMessage<
    * Sets the signature of the DID event.
    */
   abstract signWith(signer: Signer): Promise<void> | void;
+
+  /**
+   * Sets the signature of the DID event.
+   */
+  abstract execute(
+    signer: Signer,
+    publisher: Publisher,
+    lifecycle: DIDMessageLifeCycleManager<this, Hooks>
+  ): Promise<void> | void;
 
   /**
    * Method to convert the DID message to bytes for a serialized representation. A base64 encoded string is returned.

@@ -12,6 +12,8 @@ import {
 } from "./DIDOwnerMessageLifeCycle";
 import { DIDMessage } from "../DIDMessage";
 import { Signer } from "../Signer";
+import { DIDOwnerMessageHederaDefaultLifeCycle } from "./DIDOwnerMessageHederaDefaultLifeCycle";
+import { Publisher } from "../Publisher";
 
 // TODO: Add to payload?
 const hederaNetwork = "testnet";
@@ -189,6 +191,14 @@ export class DIDOwnerMessage extends DIDMessage {
         signature: this.signature ? btoa(decoder.decode(this.signature)) : "",
       })
     ).toString("base64");
+  }
+
+  async execute(
+    signer: Signer,
+    publisher: Publisher,
+    lifecycle = DIDOwnerMessageHederaDefaultLifeCycle
+  ): Promise<void> {
+    await lifecycle.start(this, signer, publisher);
   }
 
   static fromBytes(bytes: string): DIDOwnerMessage {
