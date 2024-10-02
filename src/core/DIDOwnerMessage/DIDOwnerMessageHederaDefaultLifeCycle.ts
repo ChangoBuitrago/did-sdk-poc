@@ -2,7 +2,22 @@ import {
   TopicCreateTransaction,
   TopicMessageSubmitTransaction,
 } from "@hashgraph/sdk";
-import { DIDOwnerMessageLifeCycle } from "./DIDOwnerMessageLifeCycle";
+import {
+  DIDMessageLifeCycleManager,
+  HookFunction,
+  Hooks,
+} from "../DIDMessage/DIDMessageLifeCycleManager";
+import { DIDOwnerMessage } from "./DIDOwnerMessage";
+import {
+  DIDOwnerMessagePostCreationData,
+  DIDOwnerMessagePostCreationResult,
+  DIDOwnerMessagePostSigningData,
+  DIDOwnerMessagePostSigningResult,
+  DIDOwnerMessagePreCreationData,
+  DIDOwnerMessagePreCreationResult,
+  DIDOwnerMessagePreSigningData,
+  DIDOwnerMessagePreSigningResult,
+} from "./DIDOwnerMessageLifeCycle";
 
 const clearData = (data: any) => {
   return JSON.stringify({
@@ -15,41 +30,62 @@ const clearData = (data: any) => {
   });
 };
 
-export const DIDOwnerMessageHederaDefaultLifeCycle: DIDOwnerMessageLifeCycle = {
-  preCreation: async (data) => {
-    console.log(`[DIDOwnerMessage] Pre creation data: ${clearData(data)}`);
+type DIDOwnerHooks = Hooks<
+  HookFunction<
+    DIDOwnerMessagePreCreationData,
+    DIDOwnerMessagePreCreationResult
+  >,
+  HookFunction<DIDOwnerMessagePreSigningData, DIDOwnerMessagePreSigningResult>,
+  HookFunction<
+    DIDOwnerMessagePostSigningData,
+    DIDOwnerMessagePostSigningResult
+  >,
+  HookFunction<
+    DIDOwnerMessagePostCreationData,
+    DIDOwnerMessagePostCreationResult
+  >
+>;
 
-    const response = await data.publisher.publish(
-      new TopicCreateTransaction()
-        .setAdminKey(data.publicKey)
-        .setSubmitKey(data.publicKey)
-        .freezeWith(data.publisher.client)
-    );
+export const DIDOwnerMessageHederaDefaultLifeCycle =
+  new DIDMessageLifeCycleManager<DIDOwnerMessage, DIDOwnerHooks>({
+    initialization: async (data) => {
+      console.log(`[DIDOwnerMessage] Pre creation data: ${clearData(data)}`);
 
-    const topicId = response.topicId?.toString();
+      const response = await data.publisher.publish(
+        new TopicCreateTransaction()
+          .setAdminKey(data.publicKey)
+          .setSubmitKey(data.publicKey)
+          .freezeWith(data.publisher.client)
+      );
 
-    if (!topicId) {
-      throw new Error("Failed to create a topic");
-    }
+      const topicId = response.topicId?.toString();
 
-    return {
-      topicId: topicId,
-    };
-  },
-  preSigning: async (data) => {
-    console.log(`[DIDOwnerMessage] Pre signing data: ${clearData(data)}`);
-  },
-  postSigning: async (data) => {
-    console.log(`[DIDOwnerMessage] Post signing data: ${clearData(data)}`);
-  },
-  postCreation: async (data) => {
-    console.log(`[DIDOwnerMessage] Post creation data: ${clearData(data)}`);
+      if (!topicId) {
+        throw new Error("Failed to create a topic");
+      }
 
-    await data.publisher.publish(
-      new TopicMessageSubmitTransaction()
-        .setTopicId(data.topicId)
-        .setMessage(data.message)
-        .freezeWith(data.publisher.client)
-    );
-  },
-};
+      return {
+        topicId: topicId,
+      };
+    },
+    preSigning: async (data) => {
+      const signature = await data.signer.sign(data.eventBytes);
+
+      return {
+        signature,
+      };
+    },
+    postSigning: async (data) => {
+      console.log(`[DIDOwnerMessage] Post signing data: ${clearData(data)}`);
+    },
+    publication: async (data) => {
+      console.log(`[DIDOwnerMessage] Post creation data: ${clearData(data)}`);
+
+      await data.publisher.publish(
+        new TopicMessageSubmitTransaction()
+          .setTopicId(data.topicId)
+          .setMessage(data.message)
+          .freezeWith(data.publisher.client)
+      );
+    },
+  });

@@ -28,7 +28,11 @@ async function mainInternalMode() {
       "did:hedera:testnet:z8brLDSMuByWYqd1A7yUhaiL8T2LKcxeUdihD4GmHdzar_0.0.4388790",
   });
 
-  await didOwnerMessage.execute(signer, publisher);
+  await DIDOwnerMessageHederaDefaultLifeCycle.start(
+    didOwnerMessage,
+    signer,
+    publisher
+  );
 
   client.close();
 }
@@ -59,7 +63,11 @@ async function mainExternalMode() {
       "did:hedera:testnet:z8brLDSMuByWYqd1A7yUhaiL8T2LKcxeUdihD4GmHdzar_0.0.4388790",
   });
 
-  await didOwnerMessage.execute(signer, publisher);
+  await DIDOwnerMessageHederaDefaultLifeCycle.start(
+    didOwnerMessage,
+    signer,
+    publisher
+  );
 
   client.close();
 }
@@ -90,16 +98,12 @@ async function mainClientMode() {
       "did:hedera:testnet:z8brLDSMuByWYqd1A7yUhaiL8T2LKcxeUdihD4GmHdzar_0.0.4388790",
   });
 
-  await didOwnerMessage.execute(signer, publisher, {
-    ...DIDOwnerMessageHederaDefaultLifeCycle,
-    preSigning() {
-      // QUESTION: How to use this in CSM, client should provide this signature during lifecycle.
-      // How to pause the lifecycle and wait for the client to provide the signature? Without blocking the main thread.
-      return {
-        signature: new Uint8Array(10).fill(1),
-      };
-    },
-  });
+  // Why need new LifeCycleManager for CSM?
+  await DIDOwnerMessageHederaDefaultLifeCycle.start(
+    didOwnerMessage,
+    signer,
+    publisher
+  );
 
   client.close();
 }

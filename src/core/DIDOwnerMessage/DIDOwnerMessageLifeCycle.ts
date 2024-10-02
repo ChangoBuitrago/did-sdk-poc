@@ -1,15 +1,7 @@
 import { PublicKey } from "@hashgraph/sdk";
 import { DIDMessageLifeCycle } from "../DIDMessage/DIDMessageLifeCycle";
-import { Publisher } from "../Publisher";
-import { Signer } from "../Signer";
 
-interface DIDOwnerMessageBaseData {
-  readonly publisher: Publisher;
-  readonly signer: Signer;
-}
-
-export interface DIDOwnerMessagePreCreationData
-  extends DIDOwnerMessageBaseData {
+export interface DIDOwnerMessagePreCreationData {
   controller: string;
   publicKey: PublicKey;
   timestamp: string;
@@ -18,7 +10,7 @@ export interface DIDOwnerMessagePreCreationResult {
   topicId: string;
 }
 
-export interface DIDOwnerMessagePreSigningData extends DIDOwnerMessageBaseData {
+export interface DIDOwnerMessagePreSigningData {
   event: string;
   eventBytes: Uint8Array;
   controller: string;
@@ -28,10 +20,9 @@ export interface DIDOwnerMessagePreSigningData extends DIDOwnerMessageBaseData {
 }
 export type DIDOwnerMessagePreSigningResult = {
   signature: Uint8Array;
-} | void;
+};
 
-export interface DIDOwnerMessagePostSigningData
-  extends DIDOwnerMessageBaseData {
+export interface DIDOwnerMessagePostSigningData {
   signature: Uint8Array;
   controller: string;
   publicKey: PublicKey;
@@ -41,8 +32,7 @@ export interface DIDOwnerMessagePostSigningData
 }
 export type DIDOwnerMessagePostSigningResult = void;
 
-export interface DIDOwnerMessagePostCreationData
-  extends DIDOwnerMessageBaseData {
+export interface DIDOwnerMessagePostCreationData {
   controller: string;
   publicKey: PublicKey;
   topicId: string;

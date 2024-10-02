@@ -1,10 +1,17 @@
-import { Signer } from "../Signer";
 import { PublicKey } from "@hashgraph/sdk";
 import bs58 from "bs58";
-import { Publisher } from "../Publisher";
-import { DIDOwnerMessageLifeCycle } from "./DIDOwnerMessageLifeCycle";
-import { DIDOwnerMessageHederaDefaultLifeCycle } from "./DIDOwnerMessageHederaDefaultLifeCycle";
+import {
+  DIDOwnerMessagePostCreationData,
+  DIDOwnerMessagePostCreationResult,
+  DIDOwnerMessagePostSigningData,
+  DIDOwnerMessagePostSigningResult,
+  DIDOwnerMessagePreCreationData,
+  DIDOwnerMessagePreCreationResult,
+  DIDOwnerMessagePreSigningData,
+  DIDOwnerMessagePreSigningResult,
+} from "./DIDOwnerMessageLifeCycle";
 import { DIDMessage } from "../DIDMessage";
+import { Signer } from "../Signer";
 
 // TODO: Add to payload?
 const hederaNetwork = "testnet";
@@ -26,6 +33,7 @@ export class DIDOwnerMessage extends DIDMessage {
 
   constructor(payload: DIDOwnerMessageConstructor) {
     super();
+    // Validate controller
     this.controller = payload.controller;
     this.publicKey = payload.publicKey;
     this.timestamp = payload.timestamp || new Date();
@@ -33,14 +41,83 @@ export class DIDOwnerMessage extends DIDMessage {
     this.topicId = payload.topicId;
   }
 
-  public get operation(): "create" {
+  get operation(): "create" {
     return "create";
   }
 
-  public get did(): string {
+  get did(): string {
     // Probably not the best way to encode the public key and not working
     const publicKeyBase58 = bs58.encode(this.publicKey.toBytes());
     return `did:hedera:${hederaNetwork}:${publicKeyBase58}_${this.topicId}`;
+  }
+
+  get requiredSignature(): boolean {
+    return !this.signature;
+  }
+
+  get eventBytes(): Uint8Array {
+    return new TextEncoder().encode(this.event);
+  }
+
+  get initializeData(): DIDOwnerMessagePreCreationData {
+    return {
+      controller: this.controller,
+      publicKey: this.publicKey,
+      timestamp: this.timestamp.toISOString(),
+    };
+  }
+
+  get preSigningData(): DIDOwnerMessagePreSigningData {
+    if (!this.topicId) {
+      throw new Error("Topic ID is missing");
+    }
+
+    return {
+      event: this.event,
+      eventBytes: this.eventBytes,
+      controller: this.controller,
+      publicKey: this.publicKey,
+      topicId: this.topicId,
+      timestamp: this.timestamp.toISOString(),
+    };
+  }
+
+  get postSigningData(): DIDOwnerMessagePostSigningData {
+    if (!this.topicId) {
+      throw new Error("Topic ID is missing");
+    }
+
+    if (!this.signature) {
+      throw new Error("Signature is missing");
+    }
+
+    return {
+      signature: this.signature,
+      controller: this.controller,
+      publicKey: this.publicKey,
+      topicId: this.topicId,
+      timestamp: this.timestamp.toISOString(),
+      message: this.messagePayload,
+    };
+  }
+
+  get publishingData(): DIDOwnerMessagePostCreationData {
+    if (!this.topicId) {
+      throw new Error("Topic ID is missing");
+    }
+
+    if (!this.signature) {
+      throw new Error("Signature is missing");
+    }
+
+    return {
+      controller: this.controller,
+      publicKey: this.publicKey,
+      topicId: this.topicId,
+      timestamp: this.timestamp.toISOString(),
+      signature: this.signature,
+      message: this.messagePayload,
+    };
   }
 
   protected get event(): string {
@@ -53,10 +130,6 @@ export class DIDOwnerMessage extends DIDMessage {
         publicKeyMultibase: this.publicKey.toStringDer(),
       },
     });
-  }
-
-  protected get eventBytes(): Uint8Array {
-    return new TextEncoder().encode(this.event);
   }
 
   protected get messagePayload(): string {
@@ -75,69 +148,33 @@ export class DIDOwnerMessage extends DIDMessage {
     });
   }
 
-  public async execute(
-    signer: Signer,
-    publisher: Publisher,
-    lifeCycle: DIDOwnerMessageLifeCycle = DIDOwnerMessageHederaDefaultLifeCycle
-  ): Promise<void> {
-    const { topicId } = await lifeCycle.preCreation({
-      controller: this.controller,
-      publicKey: this.publicKey,
-      timestamp: this.timestamp.toISOString(),
-      publisher,
-      signer,
-    });
+  async initialize(data: DIDOwnerMessagePreCreationResult): Promise<void> {
+    this.topicId = data.topicId;
+  }
 
-    this.topicId = topicId;
+  async preSigning(data: DIDOwnerMessagePreSigningResult): Promise<void> {
+    this.setSignature(data.signature);
+  }
 
-    const preSigningResult = await lifeCycle.preSigning({
-      event: this.event,
-      eventBytes: this.eventBytes,
-      controller: this.controller,
-      publicKey: this.publicKey,
-      topicId: this.topicId,
-      timestamp: this.timestamp.toISOString(),
-      publisher,
-      signer,
-    });
+  async postSigning(data: DIDOwnerMessagePostSigningResult): Promise<void> {
+    // TODO: Validate signature
+  }
 
-    if (preSigningResult?.signature) {
-      this.setSignature(preSigningResult.signature);
-    } else {
-      const payloadSignature = await signer.sign(this.eventBytes);
-      this.setSignature(payloadSignature);
-    }
-
-    if (!this.signature) {
-      throw new Error("Signature is missing");
-    }
-
-    await lifeCycle.postSigning({
-      signature: this.signature,
-      controller: this.controller,
-      publicKey: this.publicKey,
-      topicId: this.topicId,
-      timestamp: this.timestamp.toISOString(),
-      message: this.messagePayload,
-      publisher,
-      signer,
-    });
-
-    await lifeCycle.postCreation({
-      controller: this.controller,
-      publicKey: this.publicKey,
-      topicId: this.topicId,
-      timestamp: this.timestamp.toISOString(),
-      signature: this.signature,
-      message: this.messagePayload,
-      publisher,
-      signer,
-    });
+  async publishing(data: DIDOwnerMessagePostCreationResult): Promise<void> {
+    // We don't need to do anything here
   }
 
   public setSignature(signature: Uint8Array): void {
-    // TODO Validate signature with the public key and event
     this.signature = signature;
+  }
+
+  public async signWith(signer: Signer): Promise<void> {
+    if (!this.requiredSignature) {
+      throw new Error("Signature is already set");
+    }
+
+    const signature = await signer.sign(this.eventBytes);
+    this.setSignature(signature);
   }
 
   toBytes(): string {
